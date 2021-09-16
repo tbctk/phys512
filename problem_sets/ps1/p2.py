@@ -2,7 +2,7 @@ import numpy as np
 
 def ndiff(fun,x,full=False):
     # Use numpy arrays to make element-wise arithmetic easy
-    #x = np.array(x)
+    x = np.array(x)
     
     # Calculate optimal dx
     eps = 2**(-52)
