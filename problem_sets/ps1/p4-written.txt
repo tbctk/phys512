@@ -1,0 +1,1 @@
+In both cases, switching to linalg.pinv reduces the error significantly. I am still unclear as to why.... I don't really get this eigenvalue stuff.

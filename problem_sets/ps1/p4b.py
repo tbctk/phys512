@@ -56,15 +56,30 @@ def rat_fit(x,y,n,m):
     q=pars[n:]
     return p,q
 
+def rat_fit_pinv(x,y,n,m):
+    assert(len(x)==n+m-1)
+    assert(len(y)==len(x))
+    mat=np.zeros([n+m-1,n+m-1])
+    for i in range(n):
+        mat[:,i]=x**i
+    for i in range(1,m):
+        mat[:,i-1+n]=-y*x**i
+    pars=np.dot(np.linalg.pinv(mat),y)
+    p=pars[:n]
+    q=pars[n:]
+    return p,q
+
+
 n,m = 6,6
 p,q = rat_fit(x,y_true,n,m)
 y_rat = rat_eval(p,q,x)
 
 err = np.std(y_true-y_rat)
-print('Rational function interpolation error: ',err)
+print('Rational function interpolation error with with linalg.inv: ',err)
 
-plt.plot(x,y_rat)
+p2,q2 = rat_fit_pinv(x,y_true,n,m)
+y_rat2 = rat_eval(p2,q2,x)
 
-
-
+err = np.std(y_true-y_rat2)
+print('Rational function interpolation error with linalg.pinv: ',err)
 plt.show()
