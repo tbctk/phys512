@@ -34,10 +34,3 @@ def mylog2(x):
     # Chebyshev approximation. Then all that is left is the constant ln(2) which
     # must only be evaluated once.
     return ln2*(exp + log_2(man))
-
-# Implementation using Legendre. My log_2 function ended up using 8 coefficients,
-# so I will use a degree 7 polynomial fit.
-def leg_log_2(x):
-    xx = np.linspace(0.5,1,1001)
-    yy = np.log2(xx)
-    coeffs = np.polynomial.legendre.legfit
