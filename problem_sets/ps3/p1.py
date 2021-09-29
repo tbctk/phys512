@@ -1,6 +1,6 @@
 import numpy as np
 
-# Takes two-parameter fun (fun(x,y))
+# fun = fun(x,y)
 def rk4_step(fun,x,y,h):
     b = h/2
     k1 = h*fun(x,y)
@@ -9,6 +9,9 @@ def rk4_step(fun,x,y,h):
     k4 = h*fun(x+h,y+k3)
     dy = (k1+2*k2+2*k3+k4)/6
     return y+dy
+
+def rk4_stepd(fun,x,y,h):
+    b = h/2
 
 # fun = function; step = step function; a,b = limits; y0 = initial value (y(a)); n = number of steps
 def rk4_eval(fun,step,a,b,y0,n):
