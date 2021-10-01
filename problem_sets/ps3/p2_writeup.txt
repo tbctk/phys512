@@ -1,0 +1,5 @@
+a) Since the half-lives differ by about 20 orders of magnitude, it is essential to use an implicit solver, such as Radau for the Scipy IVP solver. With Radau, the solver is able to reach a solution very quickly. For a time interval of 10^9 years, we get an answer almost instantly with just 100 function evaluations. When I tried it with the Runge-Kutta method, the solver took so long that I gave up on waiting.
+
+b) For Pb206 to U238, the ratio seems to exponentially increase. This makes sense for this system because if we imagine U238 decaying directly into Pb206, the amount of U238 should exponentially decrease and the amount of Pb206 exponentially increase. This can be seen in Figure 1 (p2_fig1.png) where the blue curve represents the ratio while the green and orange curves represent the amounts of U238 and Pb206, respectively.
+
+For Th230 to U238, the ratio is pretty much 0. This makes sense 

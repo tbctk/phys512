@@ -12,6 +12,7 @@ def rk4_step(fun,x,y,h):
 
 def rk4_stepd(fun,x,y,h):
     b = h/2
+    # Compute y1 using one step h, y2 using two steps b
 
 # fun = function; step = step function; a,b = limits; y0 = initial value (y(a)); n = number of steps
 def rk4_eval(fun,step,a,b,y0,n):
