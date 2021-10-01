@@ -53,7 +53,7 @@ ans_a = integrate.solve_ivp(fun,(t0,t1),y0,method='Radau')
 
 from matplotlib import pyplot as plt
 
-t0,t1 = 0,1
+t0,t1 = 0,0.001
 npt = 1000
 
 t = np.linspace(t0,t1,npt)
@@ -61,7 +61,7 @@ t = np.linspace(t0,t1,npt)
 ans_b = integrate.solve_ivp(fun,(t0,t1),y0,method='Radau',t_eval=t)
 
 rat1 = ans_b.y[-1]/ans_b.y[0]
-rat2 = ans_b.y[4]/ans_b.y[0]
+rat2 = ans_b.y[4]/ans_b.y[3]
 
 #plt.figure()
 #plt.plot(t,rat1)
