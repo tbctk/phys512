@@ -30,3 +30,7 @@ lhs = A.T@A
 rhs = A.T@z
 fitp = np.linalg.inv(lhs)@rhs
 
+realp = get_pars(fitp)
+
+print("Modfied parameters: a=",fitp[0],", b=",fitp[1],", c=",fitp[2],", d=",fitp[3])
+print("Original parameters: a=",realp[0]," x_0=",realp[1],", y_0=",realp[2],", z_0=",realp[3])
