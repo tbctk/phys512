@@ -105,10 +105,10 @@ def get_chisq(pars,x,y,noise):
     pred = get_spectrum(pars,lmax=lmax)[:lmax]
     return np.sum(((y-pred)/noise)**2)
 
-def write_down(filename,arr,create=False):
-    mode = "wb" if create else "ab"
+def write_down(filename,arr,create=False,fmt='%.18e'):
+    mode = 'wb' if create else 'ab'
     f = open(filename,mode)
-    np.savetxt(f,[arr])
+    np.savetxt(f,[arr],fmt=fmt)
     f.close()
 
 def mcmc(pars,step_size,x,y,noise,nstep=1000):
@@ -117,19 +117,22 @@ def mcmc(pars,step_size,x,y,noise,nstep=1000):
     chain = np.zeros([nstep,npar])
     chivec = np.zeros(nstep)
     labels = ["chisq","H0","ombh2","omch2","tau","As","ns"]
-    write_down("planck_chain.txt",labels,create=True)
+    write_down("planck_chain.txt",labels,create=True,fmt='%s')
     for i in range(nstep):
         trial_pars = pars+step_size*np.random.randn(npar)
+        print("Trying pars ",trial_pars,"...")
         trial_chisq = get_chisq(trial_pars,x,y,noise)
         delta_chisq = trial_chisq-chisq
         accept_prob = np.exp(-0.5*delta_chisq)
         accept = np.random.rand(1)<accept_prob
+        print("Trial chisq: ",trial_chisq," Accepted: ",accept)
         if accept:
             pars = trial_pars
             chisq = trial_chisq
         chain[i,:] = pars
         chivec[i] = chisq
-        write_down("planck_chain.txt",np.concatenate(chisq,pars))
+        aline = np.concatenate(([chisq],pars))
+        write_down("planck_chain.txt",aline)
     return chain,chivec
 
 # Initial parameter guess
@@ -153,7 +156,7 @@ def main2():
     pars_lm = pfm[0]
     p_errs_lm = pfm[1]
     chain,chivec = mcmc(pars_lm,p_errs_lm,x,y,errs)
-    np.savetxt("planck_chain_after.txt",np.asarray([chivec,chain]).T)
+    #np.savetxt("planck_chain_after.txt",np.asarray([chivec,chain]).T)
     pars_mcmc = np.mean(chain,axis=0)
     dark_energy_density = 1 - 10000*(pars_mcmc[1]+pars_mcmc[2])*pars_mcmc[0]**-2
     np.savetxt("mcmc_params.txt",pars_mcmc)
