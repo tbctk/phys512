@@ -114,16 +114,16 @@ def write_down(filename,arr,create=False,fmt='%.18e'):
 def prior_chisq(pars,par_priors,par_errs):
     if par_priors is None:
         return 0
-    par_shifts = pars-par_errs
+    par_shifts = pars-par_priors
     return np.sum((par_shifts/par_errs)**2)
 
-def mcmc(pars,step_size,x,y,noise,nstep=1000,par_priors=None):
-    chisq = get_chisq(pars,x,y,noise)
+def mcmc(pars,step_size,x,y,noise,fname,nstep=1000,par_priors=None,par_errs=None):
+    chisq = get_chisq(pars,x,y,noise)+prior_chisq(pars,par_priors,par_errs)
     npar = len(pars)
     chain = np.zeros([nstep,npar])
     chivec = np.zeros(nstep)
     labels = ["chisq","H0","ombh2","omch2","tau","As","ns"]
-    write_down("planck_chain.txt",labels,create=True,fmt='%s')
+    write_down(fname,labels,create=True,fmt='%s')
     for i in range(nstep):
         trial_pars = pars+step_size*np.random.randn(npar)
         print("Trying pars ",trial_pars,"...")
@@ -138,7 +138,7 @@ def mcmc(pars,step_size,x,y,noise,nstep=1000,par_priors=None):
         chain[i,:] = pars
         chivec[i] = chisq
         aline = np.concatenate(([chisq],pars))
-        write_down("planck_chain.txt",aline)
+        write_down(fname,aline)
     return chain,chivec
 
 ## IMPORTANCE SAMPLING (Q4)
@@ -164,9 +164,44 @@ def main2():
     pfm = np.loadtxt("planck_fit_params.txt").T
     pars_lm = pfm[0]
     p_errs_lm = pfm[1]
-    chain,chivec = mcmc(pars_lm,p_errs_lm,x,y,errs)
+    chain,chivec = mcmc(pars_lm,10*p_errs_lm,x,y,errs,"planck_chain.txt")
     #np.savetxt("planck_chain_after.txt",np.asarray([chivec,chain]).T)
     pars_mcmc = np.mean(chain,axis=0)
     dark_energy_density = 1 - 10000*(pars_mcmc[1]+pars_mcmc[2])*pars_mcmc[0]**-2
     np.savetxt("mcmc_params.txt",pars_mcmc)
     np.savetxt("dark_energy_density.txt",[dark_energy_density])
+
+def main3():
+    tau_prior = 0.054
+    tau_err = 0.0074
+    par_priors = np.zeros(len(pars))
+    # Avoiding divide by zero errors
+    par_errs = par_priors + 1e20
+    par_priors[3] = tau_prior
+    par_errs[3] = tau_err
+    
+    ## Importance sampling chain from q3
+    q3_data = np.loadtxt("planck_chain.txt",skiprows=1)
+    chain_q3 = q3_data[:,1:]
+    nsamp = chain_q3.shape[0]
+    weight = np.zeros(nsamp)
+    chivec = weight
+    for i in range(nsamp):
+        chisq = prior_chisq(chain_q3[i,:],par_priors,par_errs)
+        chivec[i] = chisq
+    chivec = chivec-chivec.mean()
+    weight = np.exp(0.5*chivec)
+    w_sum = np.sum(weight)
+    npar = chain_q3.shape[1]
+    pars_importance = np.empty(npar)
+    errs_importance = np.empty(npar)
+    for i in range(npar):
+        pars_importance[i] = np.sum(weight*chain_q3[:,i])/w_sum
+        errs_importance[i] = np.sqrt(np.sum(weight*(chain_q3[:,i]-pars_importance[i])**2)/w_sum)
+    np.savetxt("importance_params.txt",np.asarray([pars_importance,errs_importance]).T)
+        
+    ## MCMC    
+    pars_mcmc = np.loadtxt("mcmc_params.txt")
+    errs_im = np.loadtxt("importance_params.txt")[:,1]
+    pars_lm = np.loadtxt("planck_fit_params.txt")[:,0]
+    chain2,chivec2 = mcmc(pars_lm,errs_im,x,y,errs,"planck_chain_tauprior.txt",par_priors=par_priors,par_errs=par_errs)
