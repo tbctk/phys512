@@ -36,7 +36,7 @@ def get_derivs(pars,lmax=3000):
         derivs.append(deriv_i)
     return np.array(derivs).T
 
-## LM
+## LM (Q2)
 
 def get_model_derivs(m,lmax):
     model = get_spectrum(m,lmax=lmax)[:lmax]
@@ -98,7 +98,7 @@ def fit_lm(m,x,y,errs,niter=10,chitol=0.01):
     return m,lhs
 
 
-## MCMC
+## MCMC (Q3)
 
 def get_chisq(pars,x,y,noise):
     lmax = len(y)
@@ -111,7 +111,13 @@ def write_down(filename,arr,create=False,fmt='%.18e'):
     np.savetxt(f,[arr],fmt=fmt)
     f.close()
 
-def mcmc(pars,step_size,x,y,noise,nstep=1000):
+def prior_chisq(pars,par_priors,par_errs):
+    if par_priors is None:
+        return 0
+    par_shifts = pars-par_errs
+    return np.sum((par_shifts/par_errs)**2)
+
+def mcmc(pars,step_size,x,y,noise,nstep=1000,par_priors=None):
     chisq = get_chisq(pars,x,y,noise)
     npar = len(pars)
     chain = np.zeros([nstep,npar])
@@ -121,7 +127,7 @@ def mcmc(pars,step_size,x,y,noise,nstep=1000):
     for i in range(nstep):
         trial_pars = pars+step_size*np.random.randn(npar)
         print("Trying pars ",trial_pars,"...")
-        trial_chisq = get_chisq(trial_pars,x,y,noise)
+        trial_chisq = get_chisq(trial_pars,x,y,noise)+prior_chisq(trial_pars,par_priors,par_errs)
         delta_chisq = trial_chisq-chisq
         accept_prob = np.exp(-0.5*delta_chisq)
         accept = np.random.rand(1)<accept_prob
@@ -134,6 +140,9 @@ def mcmc(pars,step_size,x,y,noise,nstep=1000):
         aline = np.concatenate(([chisq],pars))
         write_down("planck_chain.txt",aline)
     return chain,chivec
+
+## IMPORTANCE SAMPLING (Q4)
+
 
 # Initial parameter guess
 pars = np.asarray([69,0.022,0.12,0.06,2.1e-9,0.95])
@@ -160,4 +169,4 @@ def main2():
     pars_mcmc = np.mean(chain,axis=0)
     dark_energy_density = 1 - 10000*(pars_mcmc[1]+pars_mcmc[2])*pars_mcmc[0]**-2
     np.savetxt("mcmc_params.txt",pars_mcmc)
-    np.savetxt("dark_energy_density.txt",dark_energy_density)
+    np.savetxt("dark_energy_density.txt",[dark_energy_density])
