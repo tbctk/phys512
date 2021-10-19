@@ -167,9 +167,14 @@ def main2():
     chain,chivec = mcmc(pars_lm,10*p_errs_lm,x,y,errs,"planck_chain.txt")
     #np.savetxt("planck_chain_after.txt",np.asarray([chivec,chain]).T)
     pars_mcmc = np.mean(chain,axis=0)
+    errs_mcmc = np.std(chain,axis=0)
     dark_energy_density = 1 - 10000*(pars_mcmc[1]+pars_mcmc[2])*pars_mcmc[0]**-2
-    np.savetxt("mcmc_params.txt",pars_mcmc)
-    np.savetxt("dark_energy_density.txt",[dark_energy_density])
+    fm0 = 2e4*(pars_mcmc[1]+pars_mcmc[2])/pars_mcmc[0]**3
+    fm1 = -1e4/pars_mcmc[0]**2
+    fm2 = fm1
+    ded_err = ((fm0*mcp[1,0])**2 + (fm1*mcp[1,1])**2 + (fm2*mcp[1,2])**2)**0.5
+    np.savetxt("mcmc_params.txt",np.asarray([pars_mcmc,errs_mcmc]).T)
+    np.savetxt("dark_energy_density.txt",[dark_energy_density,ded_err])
 
 def main3():
     tau_prior = 0.054
