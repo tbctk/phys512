@@ -204,4 +204,11 @@ def main3():
     pars_mcmc = np.loadtxt("mcmc_params.txt")
     errs_im = np.loadtxt("importance_params.txt")[:,1]
     pars_lm = np.loadtxt("planck_fit_params.txt")[:,0]
-    chain2,chivec2 = mcmc(pars_lm,errs_im,x,y,errs,"planck_chain_tauprior.txt",par_priors=par_priors,par_errs=par_errs)
+    chain2,chivec2 = mcmc(pars_lm,3*errs_im,x,y,errs,"planck_chain_tauprior.txt",par_priors=par_priors,par_errs=par_errs)
+    pars_tauprior = np.mean(chain2[:,1:],axis=0)
+    np.savetxt("tauprior_params.txt",pars_tauprior)
+
+def main():
+    main1()
+    main2()
+    main3()
