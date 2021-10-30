@@ -93,3 +93,11 @@ def main4():
     plt.savefig("safe_convolution.png") if savefigs else None
     print(len(conv))
 
+def main6():
+    N = 1000
+    rw = np.cumsum(np.random.randn(N))
+    rw_ps = np.fft.fft(correlation(rw,rw)[1:])
+    plt.figure()
+    plt.plot(np.abs(rw_ps))
+    plt.savefig("rw_ps.png") if savefigs else None
+    plt.show()
