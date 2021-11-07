@@ -2,6 +2,8 @@ import numpy as np
 import json
 from matplotlib import pyplot as plt
 import simple_read_ligo as srl
+from scipy import signal as sig
+from scipy import interpolate as intp
 
 
 ## PRELIMINARIES
@@ -58,36 +60,47 @@ def tukey_window(n,m):
     return win
 
 npt = len(strains[0][0])
-win = tukey_window(npt,npt//5)
+win = tukey_window(npt,npt//8)
 showfigs = True
 
 ### PART A
 
 def get_noise_model(strains,win=None):
-    (ns,npt) = strains.shape
-    strains_ps = []
-    if win is None:
-        for strain in strains:
-            strains_ps.append(np.fft.rfft(strain)**2)
-    else:
-        for strain in strains:
-            strains_ps.append(np.fft.rfft(strain*win)**2)
-    # Use the average of these strain power spectra as the noise model.
-    strains_ps = np.asarray(strains_ps)
-    noise_model_ps = np.sum(strains_ps,axis=0)/ns
-    n_smooth = 6
-    noise_model_ps = np.convolve(noise_model_ps,np.ones(n_smooth)/n_smooth,mode='same')
-    return np.abs(noise_model_ps)
+    if False:
+        # Power spectra
+        (ns,npt) = strains.shape
+        strains_ps = []
+        if win is None:
+            for strain in strains:
+                strains_ps.append(np.fft.rfft(strain)**2)
+        else:
+            for strain in strains:
+                strains_ps.append(np.fft.rfft(strain*win)**2)
+        # Use the average of these strain power spectra as the noise model.
+        strains_ps = np.asarray(strains_ps)
+        noise_model_ps = np.sum(strains_ps,axis=0)/ns
+    noise_models = []
+    for strain in strains:
+        nperseg = 1024
+        freqs,noise = sig.welch(strain,fs=fs,window='blackman',nperseg=nperseg)
+        noise_models.append(noise)
+    noise_model_ps = np.sum(noise_models,axis=0)/len(noise_models)
+    # Smoothing
+    #n_smooth = 6
+    #noise_model_ps = np.convolve(noise_model_ps,np.ones(n_smooth)/n_smooth,mode='same')
+    # Get interpolated model
+    noise_model_intp = intp.interp1d(freqs,noise_model_ps)
+    return noise_model_intp
 
-noise_model_h = get_noise_model(strains[0],win=win)
-noise_model_l = get_noise_model(strains[1],win=win)
+freqs = np.fft.rfftfreq(len(strains[0,0]),d=dt)
+noise_model_h = get_noise_model(strains[0],win=win)(freqs)
+noise_model_l = get_noise_model(strains[1],win=win)(freqs)
 noise_models = np.asarray([noise_model_h,noise_model_l])
 
 if showfigs:
-    freq = np.fft.rfftfreq(len(strains[0,0]),d=dt)
     plt.figure()
-    plt.loglog(freq,noise_models[0],label="Noise Model for Hanford Detector")
-    plt.loglog(freq,noise_models[1],label="Noise Model for Livingston Detector")
+    plt.loglog(freqs,noise_models[0],label="Noise Model for Hanford Detector")
+    plt.loglog(freqs,noise_models[1],label="Noise Model for Livingston Detector")
     plt.legend()
     plt.show()
 
@@ -142,8 +155,8 @@ if showfigs:
 
 ### PART C
 
-# Estimate noise based on matched filter output
-#noise_ests = np.empty(strains.shape)
+# Getting SNRs
+#noise_ests = np.empty(2,4)
 snrs = np.empty((2,4))
 for i in range(2):
     for j in range(4):
@@ -151,58 +164,12 @@ for i in range(2):
         #noise_ests[i,j] = ne
         snrs[i,j] = np.max(np.abs(correlations[i,j]))/ne
 
-if False:
+### PART D
 
-    N_dict = {}
+anal_snrs = np.empty((2,4))
+for i in range(2):
+    for j in range(4):
+        whitened_template_ft = np.fft.rfft(whitened_templates[i,j])
+        sig = np.sqrt(np.sum(np.abs(whitened_template_ft)**2))
+        anal_snrs[i,j] = np.max(np.abs(correlations[i,j]))/sig
 
-    for name in names:
-        N_dict[name] = {}
-
-    for name in names:
-        # File names
-        f_tem = dirname+file_dict[name]["fn_template"]
-        f_hav = dirname+file_dict[name]["fn_H1"]
-        f_liv = dirname+file_dict[name]["fn_L1"]
-        
-        # Read data
-        strain_h,dt_h,utc_h = srl.read_file(f_hav)
-        strain_l,dt_l,utc_l = srl.read_file(f_liv)
-        
-        assert len(strain_h)==len(strain_l)
-        
-        # Choose a Tukey window function that has a flat portion in the middle
-        n = len(strain_h)
-        win = tukey_window(n,n//4)
-
-        # Fourier transforms of the strains
-        strain_ft_h = np.fft.rfft(win*strain_h)
-        strain_ft_l = np.fft.rfft(win*strain_l)
-        
-        # Use the power spectra of the strain as the starting estimate of the 
-        # noise model since we know the data is dominated by noise.
-        noise_ps_h = np.abs(strain_ft_h)**2
-        noise_ps_l = np.abs(strain_ft_l)**2
-
-        # Smoothening the power spectrum of the noise 
-        for i in range(10):
-            noise_ps_h=(noise_ps_h+np.roll(noise_ps_h,1)+np.roll(noise_ps_h,-1))/3
-            noise_ps_l=(noise_ps_l+np.roll(noise_ps_l,1)+np.roll(noise_ps_l,-1))/3
-
-        N_dict[name]["noise_ps_h"] = noise_ps_h
-        N_dict[name]["noise_ps_l"] = noise_ps_l
-        
-        ### PART B
-
-        # Load and store templates
-        template_h,template_l = srl.read_template(f_tem)
-        N_dict[name]["template_h"] = template_h
-        N_dict[name]["template_l"] = template_l
-
-        # Pre-whitening
-        strain_ft_h_white = strain_ft_h/np.sqrt(noise_ps_h)
-        template_ft_h_white = np.fft.rfft(t_h*win)/np.sqrt(noise_ps_h)
-        t_white = np.fft.irfft(tft_h_white)
-        
-
-        xcorr = np.fft.irfft(sft_h_white*np.conj(tft_white))
-        N_dict[name]["xcorr"] = xcorr
