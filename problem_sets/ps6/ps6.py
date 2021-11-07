@@ -20,8 +20,7 @@ strains = [[],[]]
 dts = [[],[]]
 templates = [[],[]]
 
-i = 0
-for name in names:
+for i, name in enumerate(names):
     # File names
     tem = dirname+file_dict[name]["fn_template"]
     hav = dirname+file_dict[name]["fn_H1"]
@@ -41,10 +40,11 @@ for name in names:
     templates[0].append(template_h)
     templates[1].append(template_l)
 
-    i = i+1
-
 strains = np.asarray(strains)
 dts = np.asarray(dts)
+dt = dts[0,0]
+assert all(dts[0]==dt) and all(dts[1]==dt)
+fs = 1/dt
 templates = np.asarray(templates)
 
 
@@ -59,6 +59,7 @@ def tukey_window(n,m):
 
 npt = len(strains[0][0])
 win = tukey_window(npt,npt//5)
+showfigs = True
 
 ### PART A
 
@@ -76,11 +77,19 @@ def get_noise_model(strains,win=None):
     noise_model_ps = np.sum(strains_ps,axis=0)/ns
     n_smooth = 6
     noise_model_ps = np.convolve(noise_model_ps,np.ones(n_smooth)/n_smooth,mode='same')
-    return noise_model_ps
+    return np.abs(noise_model_ps)
 
 noise_model_h = get_noise_model(strains[0],win=win)
 noise_model_l = get_noise_model(strains[1],win=win)
 noise_models = np.asarray([noise_model_h,noise_model_l])
+
+if showfigs:
+    freq = np.fft.rfftfreq(len(strains[0,0]),d=dt)
+    plt.figure()
+    plt.loglog(freq,noise_models[0],label="Noise Model for Hanford Detector")
+    plt.loglog(freq,noise_models[1],label="Noise Model for Livingston Detector")
+    plt.legend()
+    plt.show()
 
 ### PART B
 
@@ -96,12 +105,14 @@ def whiten(data,noise_ps,dt,win=None):
     return white_data
 
 def matched_filter(data,template,win=None):
+    freq = np.fft.rfftfreq(len(template),d=dt)
+    df = np.abs(freq[1]-freq[0])
     if win is None:
-        data_ft = np.fft.rfft(data)
-        template_ft = np.fft.rfft(template)
+        data_ft = np.fft.rfft(data)/fs
+        template_ft = np.fft.rfft(template)/fs
     else:
-        data_ft = np.fft.rfft(data*win)
-        template_ft = np.fft.rfft(template*win)
+        data_ft = np.fft.rfft(data*win)/fs
+        template_ft = np.fft.rfft(template*win)/fs
     return np.fft.irfft(data_ft*np.conj(template_ft))
 
 whitened_strains = np.empty(strains.shape)
@@ -115,6 +126,30 @@ for i in range(2):
         correlations[i].append(matched_filter(whitened_strains[i,j],whitened_templates[i,j],win=win))
 
 correlations = np.asarray(correlations)
+
+if showfigs:
+    n = len(correlations[0,0])
+    t = np.linspace(0,n*dt,n)
+    detectors = ["Hanford","Livingston"]
+    fig,axs = plt.subplots(4,2)
+    for i in range(2):
+        for j in range(len(names)):
+            y = np.fft.fftshift(correlations[i,j])
+            axs[j,i].plot(t,y)
+            axs[j,i].set_title(detectors[i]+" Event "+str(j+1),fontsize=8)
+            #axs[j,i].plot(
+            plt.show()
+
+### PART C
+
+# Estimate noise based on matched filter output
+#noise_ests = np.empty(strains.shape)
+snrs = np.empty((2,4))
+for i in range(2):
+    for j in range(4):
+        ne = np.std(correlations[i,j][-50000:])
+        #noise_ests[i,j] = ne
+        snrs[i,j] = np.max(np.abs(correlations[i,j]))/ne
 
 if False:
 
