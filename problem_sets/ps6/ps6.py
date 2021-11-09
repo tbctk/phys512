@@ -105,28 +105,16 @@ if showfigs:
     plt.show()
 
 ### PART B
-
 def whiten(data,noise_ps,dt,win=None):
     if win is None:
         data_ft = np.fft.rfft(data)
     else:
         data_ft = np.fft.rfft(data*win)
     white_data_ft = data_ft/np.sqrt(noise_ps)
-    norm = 1/np.sqrt(1/(2*dt))
-    white_data_ft = white_data_ft*norm
-    white_data = np.fft.irfft(white_data_ft)
-    return white_data
+    return white_data_ft
 
-def matched_filter(data,template,win=None):
-    freq = np.fft.rfftfreq(len(template),d=dt)
-    df = np.abs(freq[1]-freq[0])
-    if win is None:
-        data_ft = np.fft.rfft(data)/fs
-        template_ft = np.fft.rfft(template)/fs
-    else:
-        data_ft = np.fft.rfft(data*win)/fs
-        template_ft = np.fft.rfft(template*win)/fs
-    return np.fft.irfft(data_ft*np.conj(template_ft))
+def matched_filter(data_ft,template_ft):
+    return 2*np.fft.irfft(data_ft*np.conj(template_ft)/fs**2)*fs
 
 whitened_strains = np.empty(strains.shape)
 whitened_templates = np.empty(templates.shape)
@@ -134,9 +122,11 @@ correlations = [[],[]]
 
 for i in range(2):
     for j in range(len(names)):
-        whitened_strains[i,j] = whiten(strains[i,j],noise_models[i],dts[i,j],win=win)
-        whitened_templates[i,j] = whiten(templates[i,j],noise_models[i],dts[i,j],win=win)
-        correlations[i].append(matched_filter(whitened_strains[i,j],whitened_templates[i,j],win=win))
+        white_strain_ft = whiten(strains[i,j],noise_models[i],dt,win=win)
+        white_template_ft = whiten(templates[i,j],noise_models[i],dt,win=win)
+        whitened_strains[i,j] = np.fft.irfft(white_strain_ft)
+        whitened_templates[i,j] = np.fft.irfft(white_template_ft)
+        correlations[i].append(matched_filter(white_strain_ft,white_template_ft))
 
 correlations = np.asarray(correlations)
 
@@ -151,7 +141,7 @@ if showfigs:
             axs[j,i].plot(t,y)
             axs[j,i].set_title(detectors[i]+" Event "+str(j+1),fontsize=8)
             #axs[j,i].plot(
-            plt.show()
+    plt.show()
 
 ### PART C
 
@@ -170,6 +160,29 @@ anal_snrs = np.empty((2,4))
 for i in range(2):
     for j in range(4):
         whitened_template_ft = np.fft.rfft(whitened_templates[i,j])
-        sig = np.sqrt(np.sum(np.abs(whitened_template_ft)**2))
-        anal_snrs[i,j] = np.max(np.abs(correlations[i,j]))/sig
+        s = np.sqrt(np.sum(np.abs(whitened_template_ft)**2))
+        anal_snrs[i,j] = np.max(np.abs(correlations[i,j]))/s
+
+### PART E
+
+half_freqs = np.empty((2,4))
+for i in range(2):
+    for j in range(4):
+        cft = np.fft.rfft(np.fft.fftshift(correlations[i,j]))
+        freqs = np.fft.rfftfreq(len(correlations[i,j]),dt)
+        weights = np.cumsum(cft)
+        wmax = weights[-1]
+        index = np.argmin(np.abs(wmax-2*weights))
+        half_freqs[i,j] = freqs[index]
+
+### PART F
+
+arrival_times = np.empty((2,4))
+for i in range(2):
+    for j in range(4):
+        c = correlations[i,j]
+        t = np.arange(len(c))*dt
+        index = np.argmax(c)
+        arrival_times[i,j] = t[index]
+
 
