@@ -22,6 +22,7 @@ def expdev_rejection(n,alpha=1,makeplots=False):
     
     # Plotting
     if makeplots:
+        print("Fraction of used points: ",len(t_use)/len(t))
         plt.figure()
         bins = np.linspace(0,20,501)
         aa,bb = np.histogram(t_use,bins)
@@ -56,6 +57,8 @@ def expdev_ratio(n,alpha=1,makeplots=False):
     
     # Plotting
     if makeplots:
+        print("Maximum v: ",vmax)
+        print("Fraction of points used: ",len(t_use)/len(t))
         plt.figure()
         bins = np.linspace(0,20,501)
         aa,bb = np.histogram(t_use,bins)
