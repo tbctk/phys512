@@ -22,17 +22,22 @@ def point_charge_potential(n):
 # function, x is the charge rho, and b is the boundary potential.
 
 # This function will serve as "A", performing the convolution to get the potential.
-def rho2pot(rho,mask,kernelft,return_mat=False):
-    (n,m) = rho.shape
+def rho2pot(rho,kernelft):
+    (n,m)=rho.shape
     rho_padded = np.pad(rho,(0,n))
     rhoft = np.fft.rfft2(rho_padded)
     pot_padded = np.fft.irfft2(rhoft*kernelft)
-    pot = pot[:n,:m]
-    return pot if return_mat else pot[mask]
+    pot = pot_padded[:n,:m]
+    return pot
 
+def rho2pot_masked(rho,mask,kernelft,return_mat=False):
+    rhomat = np.zeros(mask.shape)
+    rhomat[mask] = rho
+    potmat = rho2pot(rhomat,kernelft)
+    return potmat if return_mat else potmat[mask]
 
 # This function will solve for x, given A and b.
-def conjgrad(x0,b,mask,kernelft,niter=1,fun=rho2pot):
+def conjgrad(x0,b,mask,kernelft,niter=1,fun=rho2pot_masked):
     # Based on Jon's conjugate gradient code
     r = b-fun(x0,mask,kernelft)
     p = r.copy()
@@ -47,7 +52,7 @@ def conjgrad(x0,b,mask,kernelft,niter=1,fun=rho2pot):
         rr_new = np.sum(r*r)
         beta = rr_new/rr
         p = r+beta*p
-        rr = r_new
+        rr = rr_new
     return x
 
 def gen_square_bc(n):
@@ -69,7 +74,7 @@ def gen_square_bc(n):
 
 # Running everything
 
-n = 128
+n = 32
 
 kernel = point_charge_potential(2*n)
 kernelft = np.fft.rfft2(kernel)
@@ -78,11 +83,43 @@ bc,mask = gen_square_bc(n)
 b = bc[mask]
 x0 = 0*b
 
-rho_out = conjgrad(x0,b,mask,kernelft,niter=n)
+rho = np.zeros(mask.shape)
+rho[mask] = conjgrad(x0,b,mask,kernelft,niter=3*n)
+
+oneside = rho[n//4:3*n//4+1,n//4]
+
+showfigs = True
+if showfigs:
+    plt.figure(1)
+    plt.imshow(rho)
+    plt.show()
+
+    plt.figure(2)
+    plt.plot(oneside)
+    plt.show()
 
 
+### PART C
+
+# Calculating potential everywhere with our Green's function
+pot = rho2pot(rho,kernelft)
+interior_pot = pot[n//4+1:3*n//4-1,n//4+1:3*n//4-1]
+
+# The field is the gradient of the potential (ignoring signs). I will use two-point
+# derivative to solve, and assume that dx=dy=1.
+fx = (np.roll(pot,1,axis=1)-np.roll(pot,-1,axis=1))/2
+fy = (np.roll(pot,1,axis=0)-np.roll(pot,-1,axis=0))/2
 
 
+if showfigs:
+    plt.figure(3)
+    plt.imshow(pot)
+    plt.show()
 
+    plt.figure(4)
+    plt.imshow(interior_pot)
+    plt.show()
 
-
+    plt.figure(5)
+    plt.quiver(fx,fy)
+    plt.show()
