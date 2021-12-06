@@ -30,11 +30,11 @@ def rho2pot(rho,kernelft):
     pot = pot_padded[:n,:m]
     return pot
 
-def rho2pot_masked(rho,mask,kernelft,return_mat=False):
+def rho2pot_masked(rho,mask,kernelft):
     rhomat = np.zeros(mask.shape)
     rhomat[mask] = rho
     potmat = rho2pot(rhomat,kernelft)
-    return potmat if return_mat else potmat[mask]
+    return potmat[mask]
 
 # This function will solve for x, given A and b.
 def conjgrad(x0,b,mask,kernelft,niter=1,fun=rho2pot_masked):
