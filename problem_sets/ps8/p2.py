@@ -10,10 +10,11 @@ def point_charge_potential(n):
     xmat,ymat = np.meshgrid(x,x)
     rmat = np.sqrt(xmat**2+ymat**2)
     rmat[0,0] = 1
-    pot = -np.log(rmat)/2/np.pi
-    #pot = pot-pot[n//2,n//2]
+    pot = -np.log(rmat)#/2/np.pi
     pot[0,0] = 4*pot[1,0]-pot[2,0]-pot[1,-1]-pot[1,1]
-    pot = pot-pot[0,0]+1
+    pot = pot/pot[0,0]
+    #pot = pot-pot[0,0]+1
+    
     return pot
 
 ### PART B
@@ -74,7 +75,7 @@ def gen_square_bc(n):
 
 # Running everything
 
-n = 32
+n = 128
 
 kernel = point_charge_potential(2*n)
 kernelft = np.fft.rfft2(kernel)
